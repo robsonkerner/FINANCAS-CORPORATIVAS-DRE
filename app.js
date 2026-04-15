@@ -94,6 +94,7 @@ const activityLogEl = document.getElementById("activity-log");
 const attemptReviewEl = document.getElementById("attempt-review");
 const reviewMetaEl = document.getElementById("review-meta");
 const reviewColumnsEl = document.getElementById("review-columns");
+const cloudStatusEl = document.getElementById("cloud-status");
 
 document.getElementById("enter-btn").addEventListener("click", onEnter);
 document.getElementById("back-home-btn").addEventListener("click", backToHome);
@@ -115,6 +116,7 @@ async function init() {
   renderAttempts();
   renderActivityLog();
   state.dadosBase = await loadBaseData();
+  setCloudStatus("Conectando com base online...");
   await syncAttemptsFromSupabase();
 }
 
@@ -633,6 +635,7 @@ function formatDateTime(iso) {
 async function syncAttemptsFromSupabase() {
   const remoteAttempts = await fetchAttemptsFromSupabase();
   if (!remoteAttempts) {
+    setCloudStatus("Sem conexao com Supabase. Salvamento ficou local neste navegador.", "warn");
     return;
   }
 
@@ -641,6 +644,7 @@ async function syncAttemptsFromSupabase() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(merged, null, 2));
   renderAttempts();
   renderActivityLog();
+  setCloudStatus("Conectado com Supabase. Resultados compartilhados ativos.", "ok");
 }
 
 async function fetchAttemptsFromSupabase() {
@@ -654,6 +658,8 @@ async function fetchAttemptsFromSupabase() {
     });
 
     if (!response.ok) {
+      const detail = await response.text();
+      console.error("Falha ao ler Supabase:", response.status, detail);
       return null;
     }
 
@@ -664,6 +670,7 @@ async function fetchAttemptsFromSupabase() {
 
     return data.map(mapSupabaseRowToAttempt);
   } catch (error) {
+    console.error("Erro de rede ao ler Supabase:", error);
     return null;
   }
 }
@@ -694,8 +701,17 @@ async function saveAttemptToSupabase(attempt) {
       },
       body: JSON.stringify(payload)
     });
+    if (!response.ok) {
+      const detail = await response.text();
+      console.error("Falha ao salvar no Supabase:", response.status, detail);
+      setCloudStatus("Falha ao salvar online. Verifique RLS e permissao de insert.", "warn");
+      return false;
+    }
+    setCloudStatus("Tentativa salva online com sucesso.", "ok");
     return response.ok;
   } catch (error) {
+    console.error("Erro de rede ao salvar Supabase:", error);
+    setCloudStatus("Erro de rede ao salvar online. Tentativa salva apenas localmente.", "warn");
     return false;
   }
 }
@@ -729,6 +745,14 @@ function mergeAttempts(localAttempts, remoteAttempts) {
     const dateB = new Date(b.dataResposta || b.dataHora || 0).getTime();
     return dateA - dateB;
   });
+}
+
+function setCloudStatus(message, type = "") {
+  if (!cloudStatusEl) {
+    return;
+  }
+  cloudStatusEl.textContent = message;
+  cloudStatusEl.className = `small-text ${type}`.trim();
 }
 
 function buildReviewDreHtml(exercicio, attempt, modo) {

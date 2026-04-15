@@ -423,6 +423,16 @@ button:disabled {
   color: #4f5d6c;
 }
 
+#cloud-status.ok {
+  color: #0f8a40;
+  font-weight: bold;
+}
+
+#cloud-status.warn {
+  color: #c83a22;
+  font-weight: bold;
+}
+
 @media (max-width: 900px) {
   .dre-workspace {
     grid-template-columns: 1fr;
