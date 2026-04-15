@@ -25,6 +25,21 @@
       </select>
       <button id="enter-btn">Entrar</button>
       <p id="login-error" class="error-message hidden">Informe seu nome para continuar.</p>
+
+      <h3 class="log-title">Log de partidas (neste navegador)</h3>
+      <p class="small-text">Nome do aluno, quando comecou o exercicio, quando respondeu e se acertou.</p>
+      <div id="activity-log" class="activity-log">
+        <p class="log-empty">Nenhum registro ainda.</p>
+      </div>
+
+      <section id="attempt-review" class="attempt-review hidden">
+        <div class="top-bar">
+          <h3>Comparativo da tentativa</h3>
+          <button id="close-review-btn" class="secondary">Fechar comparativo</button>
+        </div>
+        <p id="review-meta" class="small-text"></p>
+        <div id="review-columns" class="review-columns"></div>
+      </section>
     </section>
 
     <section id="exercise-card" class="card hidden">
@@ -33,7 +48,10 @@
           <h2>Exercício de DRE</h2>
           <p id="student-label"></p>
         </div>
-        <button id="new-exercise-btn" class="secondary">Gerar nova lista</button>
+        <div class="top-actions">
+          <button id="back-home-btn" class="secondary">Voltar ao inicio</button>
+          <button id="new-exercise-btn" class="secondary">Gerar nova lista</button>
+        </div>
       </div>
 
       <h3>Organizacao por arrastar e soltar</h3>

@@ -68,7 +68,9 @@ const state = {
   dadosBase: null,
   exercicioAtual: null,
   selecoes: {},
-  tentativas: []
+  tentativas: [],
+  rodadaSubmetida: false,
+  inicioJogoRodada: null
 };
 
 const loginCard = document.getElementById("login-card");
@@ -84,22 +86,31 @@ const summaryEl = document.getElementById("summary");
 const resultMessage = document.getElementById("result-message");
 const attemptsOutput = document.getElementById("attempts-output");
 const importFileInput = document.getElementById("import-file");
+const submitBtn = document.getElementById("submit-btn");
+const activityLogEl = document.getElementById("activity-log");
+const attemptReviewEl = document.getElementById("attempt-review");
+const reviewMetaEl = document.getElementById("review-meta");
+const reviewColumnsEl = document.getElementById("review-columns");
 
 document.getElementById("enter-btn").addEventListener("click", onEnter);
+document.getElementById("back-home-btn").addEventListener("click", backToHome);
 document.getElementById("submit-btn").addEventListener("click", onSubmit);
 document.getElementById("new-exercise-btn").addEventListener("click", buildExercise);
 document.getElementById("show-attempts-btn").addEventListener("click", toggleAttempts);
 document.getElementById("export-btn").addEventListener("click", exportAttempts);
+document.getElementById("close-review-btn").addEventListener("click", closeAttemptReview);
 importFileInput.addEventListener("change", importAttempts);
 recordsBank.addEventListener("dragover", onDragOverZone);
 recordsBank.addEventListener("dragleave", onDragLeaveZone);
 recordsBank.addEventListener("drop", onDropRecord);
+activityLogEl.addEventListener("click", onActivityLogClick);
 
 init();
 
 async function init() {
   state.tentativas = loadAttempts();
   renderAttempts();
+  renderActivityLog();
   state.dadosBase = await loadBaseData();
 }
 
@@ -117,6 +128,14 @@ function onEnter() {
   loginCard.classList.add("hidden");
   exerciseCard.classList.remove("hidden");
   buildExercise();
+}
+
+function backToHome() {
+  exerciseCard.classList.add("hidden");
+  loginCard.classList.remove("hidden");
+  studentNameInput.value = state.aluno;
+  difficultySelect.value = state.dificuldade;
+  renderActivityLog();
 }
 
 function buildExercise() {
@@ -137,8 +156,13 @@ function buildExercise() {
   const randomIndex = Math.floor(Math.random() * exerciciosDoNivel.length);
   state.exercicioAtual = structuredClone(exerciciosDoNivel[randomIndex]);
   state.selecoes = {};
+  state.rodadaSubmetida = false;
+  state.inicioJogoRodada = new Date().toISOString();
   resultMessage.textContent = "";
   resultMessage.className = "result-message";
+
+  submitBtn.disabled = false;
+  submitBtn.removeAttribute("title");
 
   const shuffledRecords = shuffleArray(state.exercicioAtual.registros);
   recordsBank.innerHTML = "";
@@ -184,6 +208,12 @@ function onSubmit() {
     return;
   }
 
+  if (state.rodadaSubmetida) {
+    resultMessage.textContent = "Voce ja submeteu nesta rodada. Clique em Gerar nova lista para jogar de novo.";
+    resultMessage.className = "result-message result-error";
+    return;
+  }
+
   const missing = state.exercicioAtual.registros.filter((registro) => !state.selecoes[registro.id]);
   if (missing.length > 0) {
     resultMessage.textContent = "Preencha a classificacao de todos os registros antes de submeter.";
@@ -202,11 +232,12 @@ function onSubmit() {
   const ok = classificacaoCorreta && resultadoCorreto;
 
   resultMessage.textContent = ok
-    ? "Resposta correta! Classificacao e resultado da DRE estao corretos."
-    : "Erro na DRE. Revise a classificacao e tente novamente.";
+    ? "Resposta correta! Classificacao e resultado da DRE estao corretos. Clique em Gerar nova lista para jogar de novo."
+    : "Erro na DRE. Nesta rodada nao e possivel submeter de novo. Clique em Gerar nova lista para uma nova tentativa.";
   resultMessage.className = `result-message ${ok ? "result-correct" : "result-error"}`;
 
   registerAttempt(ok, expected, selected);
+  lockRoundAfterSubmit();
 }
 
 function calculateBySelection() {
@@ -258,8 +289,12 @@ function emptyTotals() {
 }
 
 function registerAttempt(ok, esperado, informado) {
+  const dataResposta = new Date().toISOString();
   const attempt = {
-    dataHora: new Date().toISOString(),
+    idTentativa: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    dataHora: dataResposta,
+    dataResposta,
+    inicioJogo: state.inicioJogoRodada,
     aluno: state.aluno,
     dificuldade: state.dificuldade,
     exercicioId: state.exercicioAtual.id,
@@ -273,6 +308,7 @@ function registerAttempt(ok, esperado, informado) {
   state.tentativas.push(attempt);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tentativas, null, 2));
   renderAttempts();
+  renderActivityLog();
 }
 
 function loadAttempts() {
@@ -295,6 +331,72 @@ function toggleAttempts() {
 
 function renderAttempts() {
   attemptsOutput.textContent = JSON.stringify(state.tentativas, null, 2);
+}
+
+function renderActivityLog() {
+  if (!activityLogEl) {
+    return;
+  }
+
+  if (!state.tentativas.length) {
+    activityLogEl.innerHTML = '<p class="log-empty">Nenhum registro ainda.</p>';
+    return;
+  }
+
+  const recent = [...state.tentativas].reverse().slice(0, 50);
+  const fmt = (iso) => {
+    if (!iso) return "-";
+    try {
+      return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" });
+    } catch (e) {
+      return iso;
+    }
+  };
+
+  const rows = recent
+    .map(
+      (t) => `
+    <tr>
+      <td>${escapeHtml(t.aluno || "-")}</td>
+      <td>${t.inicioJogo ? fmt(t.inicioJogo) : "-"}</td>
+      <td>${fmt(t.dataResposta || t.dataHora)}</td>
+      <td class="${t.correto ? "ok" : "fail"}">${t.correto ? "Acertou" : "Errou"}</td>
+      <td class="view-col"><button class="secondary view-attempt-btn" data-attempt-id="${escapeHtml(t.idTentativa || "")}" data-attempt-time="${escapeHtml(t.dataResposta || t.dataHora || "")}">Ver</button></td>
+    </tr>`
+    )
+    .join("");
+
+  activityLogEl.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Aluno</th>
+          <th>Inicio do jogo</th>
+          <th>Resposta enviada</th>
+          <th>Resultado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function lockRoundAfterSubmit() {
+  state.rodadaSubmetida = true;
+  submitBtn.disabled = true;
+  submitBtn.title = "Uma submissao por rodada. Use Gerar nova lista para uma nova tentativa.";
+
+  document.querySelectorAll(".record-item").forEach((el) => {
+    el.draggable = false;
+    el.classList.add("record-locked");
+  });
 }
 
 function exportAttempts() {
@@ -323,6 +425,7 @@ function importAttempts(event) {
       state.tentativas = imported;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tentativas, null, 2));
       renderAttempts();
+      renderActivityLog();
       alert("Arquivo importado com sucesso.");
     } catch (error) {
       alert("Arquivo JSON invalido.");
@@ -399,6 +502,10 @@ function onDropRecord(event) {
   const zone = event.currentTarget;
   zone.classList.remove("drag-over");
 
+  if (state.rodadaSubmetida) {
+    return;
+  }
+
   const recordId = event.dataTransfer.getData("text/plain");
   if (!recordId) {
     return;
@@ -443,4 +550,97 @@ function formatDifficultyLabel(level) {
   if (level === "easy") return "Easy";
   if (level === "hard") return "Hard";
   return "Normal";
+}
+
+function onActivityLogClick(event) {
+  const button = event.target.closest(".view-attempt-btn");
+  if (!button) {
+    return;
+  }
+
+  const attemptId = button.dataset.attemptId;
+  const attemptTime = button.dataset.attemptTime;
+  const attempt = state.tentativas.find((item) => {
+    if (attemptId) {
+      return item.idTentativa === attemptId;
+    }
+    return (item.dataResposta || item.dataHora || "") === attemptTime;
+  });
+
+  if (!attempt) {
+    alert("Tentativa nao encontrada.");
+    return;
+  }
+
+  openAttemptReview(attempt);
+}
+
+function openAttemptReview(attempt) {
+  const exercicio = findExerciseById(attempt.exercicioId);
+  if (!exercicio) {
+    reviewMetaEl.textContent = "Nao foi possivel localizar o exercicio original para comparar.";
+    reviewColumnsEl.innerHTML = "";
+    attemptReviewEl.classList.remove("hidden");
+    return;
+  }
+
+  const registros = exercicio.registros || [];
+  const alunoItens = [];
+  const corretoItens = [];
+
+  registros.forEach((registro) => {
+    const alunoCategoria = attempt.classificacoes?.[registro.id] || "(nao classificado)";
+    const corretaCategoria = registro.categoriaCorreta;
+    const ok = alunoCategoria === corretaCategoria;
+
+    alunoItens.push(`
+      <div class="review-item ${ok ? "ok" : "fail"}">
+        <div class="account">${escapeHtml(registro.conta)}</div>
+        <div class="category">Aluno: ${escapeHtml(alunoCategoria)}</div>
+      </div>
+    `);
+
+    corretoItens.push(`
+      <div class="review-item ${ok ? "ok" : "fail"}">
+        <div class="account">${escapeHtml(registro.conta)}</div>
+        <div class="category">Correto: ${escapeHtml(corretaCategoria)}</div>
+      </div>
+    `);
+  });
+
+  reviewMetaEl.textContent = `${attempt.aluno || "-"} | ${formatDifficultyLabel(attempt.dificuldade || "normal")} | ${attempt.correto ? "Acertou" : "Errou"} | Respondido em ${formatDateTime(attempt.dataResposta || attempt.dataHora)}`;
+  reviewColumnsEl.innerHTML = `
+    <div class="review-column">
+      <h4>Resposta do aluno</h4>
+      ${alunoItens.join("")}
+    </div>
+    <div class="review-column">
+      <h4>Gabarito correto</h4>
+      ${corretoItens.join("")}
+    </div>
+  `;
+
+  attemptReviewEl.classList.remove("hidden");
+}
+
+function closeAttemptReview() {
+  attemptReviewEl.classList.add("hidden");
+}
+
+function findExerciseById(exercicioId) {
+  if (!state.dadosBase?.exercicios) {
+    return null;
+  }
+  return state.dadosBase.exercicios.find((item) => item.id === exercicioId) || null;
+}
+
+function formatDateTime(iso) {
+  if (!iso) {
+    return "-";
+  }
+  try {
+    return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "medium" });
+  } catch (error) {
+    return iso;
+  }
 }
