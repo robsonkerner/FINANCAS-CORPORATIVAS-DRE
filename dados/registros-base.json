@@ -10,6 +10,7 @@
   "exercicios": [
     {
       "id": "dre-001",
+      "dificuldade": "normal",
       "titulo": "Comercio Varejista",
       "registros": [
         { "id": "r1", "conta": "Venda de Mercadorias", "valor": 120000, "categoriaCorreta": "Receita Bruta" },
@@ -25,6 +26,7 @@
     },
     {
       "id": "dre-002",
+      "dificuldade": "hard",
       "titulo": "Industria Alimenticia",
       "registros": [
         { "id": "r10", "conta": "Receita de Vendas", "valor": 180000, "categoriaCorreta": "Receita Bruta" },
@@ -36,6 +38,19 @@
         { "id": "r16", "conta": "Receita de Aplicacao Financeira", "valor": 3500, "categoriaCorreta": "Resultado Financeiro" },
         { "id": "r17", "conta": "Juros sobre Emprestimos", "valor": 4500, "categoriaCorreta": "Resultado Financeiro" },
         { "id": "r18", "conta": "Imposto de Renda e Contribuicao Social", "valor": 14500, "categoriaCorreta": "Impostos sobre Lucro" }
+      ]
+    },
+    {
+      "id": "dre-003",
+      "dificuldade": "easy",
+      "titulo": "Prestadora de Servicos Basica",
+      "registros": [
+        { "id": "r19", "conta": "Receita de Servicos", "valor": 70000, "categoriaCorreta": "Receita Bruta" },
+        { "id": "r20", "conta": "ISS sobre Servicos", "valor": 3500, "categoriaCorreta": "Deducoes" },
+        { "id": "r21", "conta": "Custos Diretos do Servico", "valor": 22000, "categoriaCorreta": "CMV" },
+        { "id": "r22", "conta": "Despesas Administrativas", "valor": 9000, "categoriaCorreta": "Despesas Operacionais" },
+        { "id": "r23", "conta": "Despesa Financeira", "valor": 1200, "categoriaCorreta": "Resultado Financeiro" },
+        { "id": "r24", "conta": "IRPJ e CSLL", "valor": 4800, "categoriaCorreta": "Impostos sobre Lucro" }
       ]
     }
   ]

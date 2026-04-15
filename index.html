@@ -17,6 +17,12 @@
       <h2>Entrada do Aluno</h2>
       <label for="student-name">Nome do aluno</label>
       <input id="student-name" type="text" placeholder="Digite seu nome completo">
+      <label for="difficulty-level">Nivel de dificuldade</label>
+      <select id="difficulty-level">
+        <option value="easy">Easy</option>
+        <option value="normal" selected>Normal</option>
+        <option value="hard">Hard</option>
+      </select>
       <button id="enter-btn">Entrar</button>
       <p id="login-error" class="error-message hidden">Informe seu nome para continuar.</p>
     </section>
@@ -30,7 +36,21 @@
         <button id="new-exercise-btn" class="secondary">Gerar nova lista</button>
       </div>
 
-      <div id="records-list" class="records-list"></div>
+      <h3>Organizacao por arrastar e soltar</h3>
+      <div class="dre-workspace">
+        <section class="workspace-panel">
+          <h4>Lista de lancamentos</h4>
+          <p class="small-text">Arraste os cards para as secoes da DRE.</p>
+          <div id="records-bank" class="drop-zone bank-zone" data-category="">
+            <p class="drop-hint">Solte aqui para remover da DRE.</p>
+          </div>
+        </section>
+
+        <section class="workspace-panel">
+          <h4>Documento DRE padrao</h4>
+          <div id="dre-board" class="dre-board"></div>
+        </section>
+      </div>
 
       <h3>Resumo calculado</h3>
       <div id="summary" class="summary-grid"></div>

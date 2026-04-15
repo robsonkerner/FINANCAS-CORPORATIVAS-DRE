@@ -1,7 +1,70 @@
 const STORAGE_KEY = "dre_tentativas";
+const FALLBACK_BASE_DATA = {
+  categoriasDre: [
+    "Receita Bruta",
+    "Deducoes",
+    "CMV",
+    "Despesas Operacionais",
+    "Resultado Financeiro",
+    "Impostos sobre Lucro"
+  ],
+  exercicios: [
+    {
+      id: "easy-001",
+      dificuldade: "easy",
+      titulo: "Loja Basica",
+      registros: [
+        { id: "e1", conta: "Venda de Mercadorias", valor: 50000, categoriaCorreta: "Receita Bruta" },
+        { id: "e2", conta: "Impostos sobre Vendas", valor: 5000, categoriaCorreta: "Deducoes" },
+        { id: "e3", conta: "Custo das Mercadorias Vendidas", valor: 20000, categoriaCorreta: "CMV" },
+        { id: "e4", conta: "Despesa com Salarios", valor: 7000, categoriaCorreta: "Despesas Operacionais" },
+        { id: "e5", conta: "Despesa Financeira", valor: 1000, categoriaCorreta: "Resultado Financeiro" },
+        { id: "e6", conta: "IRPJ e CSLL", valor: 3000, categoriaCorreta: "Impostos sobre Lucro" }
+      ]
+    },
+    {
+      id: "normal-001",
+      dificuldade: "normal",
+      titulo: "Comercio Varejista",
+      registros: [
+        { id: "n1", conta: "Venda de Mercadorias", valor: 120000, categoriaCorreta: "Receita Bruta" },
+        { id: "n2", conta: "Devolucoes de Vendas", valor: 5000, categoriaCorreta: "Deducoes" },
+        { id: "n3", conta: "Impostos sobre Vendas", valor: 9000, categoriaCorreta: "Deducoes" },
+        { id: "n4", conta: "Custo das Mercadorias Vendidas", valor: 45000, categoriaCorreta: "CMV" },
+        { id: "n5", conta: "Despesas com Salarios Administrativos", valor: 14000, categoriaCorreta: "Despesas Operacionais" },
+        { id: "n6", conta: "Despesas com Aluguel", valor: 6000, categoriaCorreta: "Despesas Operacionais" },
+        { id: "n7", conta: "Receita Financeira", valor: 2000, categoriaCorreta: "Resultado Financeiro" },
+        { id: "n8", conta: "Despesa Financeira", valor: 3000, categoriaCorreta: "Resultado Financeiro" },
+        { id: "n9", conta: "IRPJ e CSLL", valor: 9500, categoriaCorreta: "Impostos sobre Lucro" }
+      ]
+    },
+    {
+      id: "hard-001",
+      dificuldade: "hard",
+      titulo: "Industria Multiplas Linhas",
+      registros: [
+        { id: "h1", conta: "Receita de Vendas Mercado Interno", valor: 210000, categoriaCorreta: "Receita Bruta" },
+        { id: "h2", conta: "Receita de Exportacao", valor: 90000, categoriaCorreta: "Receita Bruta" },
+        { id: "h3", conta: "Devolucoes e Abatimentos", valor: 12000, categoriaCorreta: "Deducoes" },
+        { id: "h4", conta: "Tributos sobre Vendas", valor: 26000, categoriaCorreta: "Deducoes" },
+        { id: "h5", conta: "Custo de Materia Prima Consumida", valor: 70000, categoriaCorreta: "CMV" },
+        { id: "h6", conta: "Custo de Mao de Obra Direta", valor: 38000, categoriaCorreta: "CMV" },
+        { id: "h7", conta: "Custos Indiretos de Fabricacao", valor: 24000, categoriaCorreta: "CMV" },
+        { id: "h8", conta: "Despesas Comerciais", valor: 19000, categoriaCorreta: "Despesas Operacionais" },
+        { id: "h9", conta: "Despesas Administrativas", valor: 22000, categoriaCorreta: "Despesas Operacionais" },
+        { id: "h10", conta: "Outras Despesas Operacionais", valor: 7000, categoriaCorreta: "Despesas Operacionais" },
+        { id: "h11", conta: "Receita Financeira", valor: 6500, categoriaCorreta: "Resultado Financeiro" },
+        { id: "h12", conta: "Juros sobre Emprestimos", valor: 10000, categoriaCorreta: "Resultado Financeiro" },
+        { id: "h13", conta: "Despesa Financeira", valor: 2500, categoriaCorreta: "Resultado Financeiro" },
+        { id: "h14", conta: "Imposto de Renda e Contribuicao Social", valor: 28000, categoriaCorreta: "Impostos sobre Lucro" }
+      ]
+    }
+  ]
+};
 
 const state = {
   aluno: "",
+  dificuldade: "normal",
   dadosBase: null,
   exercicioAtual: null,
   selecoes: {},
@@ -13,8 +76,10 @@ const exerciseCard = document.getElementById("exercise-card");
 const attemptsCard = document.getElementById("attempts-card");
 const loginError = document.getElementById("login-error");
 const studentNameInput = document.getElementById("student-name");
+const difficultySelect = document.getElementById("difficulty-level");
 const studentLabel = document.getElementById("student-label");
-const recordsList = document.getElementById("records-list");
+const recordsBank = document.getElementById("records-bank");
+const dreBoard = document.getElementById("dre-board");
 const summaryEl = document.getElementById("summary");
 const resultMessage = document.getElementById("result-message");
 const attemptsOutput = document.getElementById("attempts-output");
@@ -26,20 +91,16 @@ document.getElementById("new-exercise-btn").addEventListener("click", buildExerc
 document.getElementById("show-attempts-btn").addEventListener("click", toggleAttempts);
 document.getElementById("export-btn").addEventListener("click", exportAttempts);
 importFileInput.addEventListener("change", importAttempts);
+recordsBank.addEventListener("dragover", onDragOverZone);
+recordsBank.addEventListener("dragleave", onDragLeaveZone);
+recordsBank.addEventListener("drop", onDropRecord);
 
 init();
 
 async function init() {
   state.tentativas = loadAttempts();
   renderAttempts();
-
-  try {
-    const response = await fetch("./dados/registros-base.json");
-    state.dadosBase = await response.json();
-  } catch (error) {
-    resultMessage.textContent = "Erro ao carregar arquivo de dados base.";
-    resultMessage.className = "result-message result-error";
-  }
+  state.dadosBase = await loadBaseData();
 }
 
 function onEnter() {
@@ -51,7 +112,8 @@ function onEnter() {
 
   loginError.classList.add("hidden");
   state.aluno = nome;
-  studentLabel.textContent = `Aluno: ${nome}`;
+  state.dificuldade = difficultySelect.value || "normal";
+  studentLabel.textContent = `Aluno: ${nome} | Nivel: ${formatDifficultyLabel(state.dificuldade)}`;
   loginCard.classList.add("hidden");
   exerciseCard.classList.remove("hidden");
   buildExercise();
@@ -62,36 +124,30 @@ function buildExercise() {
     return;
   }
 
-  const randomIndex = Math.floor(Math.random() * state.dadosBase.exercicios.length);
-  state.exercicioAtual = structuredClone(state.dadosBase.exercicios[randomIndex]);
+  const exerciciosDoNivel = state.dadosBase.exercicios.filter(
+    (exercicio) => (exercicio.dificuldade || "normal") === state.dificuldade
+  );
+
+  if (!exerciciosDoNivel.length) {
+    resultMessage.textContent = `Nao existem exercicios no nivel ${formatDifficultyLabel(state.dificuldade)}.`;
+    resultMessage.className = "result-message result-error";
+    return;
+  }
+
+  const randomIndex = Math.floor(Math.random() * exerciciosDoNivel.length);
+  state.exercicioAtual = structuredClone(exerciciosDoNivel[randomIndex]);
   state.selecoes = {};
   resultMessage.textContent = "";
   resultMessage.className = "result-message";
 
   const shuffledRecords = shuffleArray(state.exercicioAtual.registros);
-  recordsList.innerHTML = "";
+  recordsBank.innerHTML = "";
+  recordsBank.insertAdjacentHTML("beforeend", `<p class="drop-hint">Solte aqui para remover da DRE.</p>`);
+  renderDreTemplate();
 
   shuffledRecords.forEach((registro) => {
-    const card = document.createElement("article");
-    card.className = "record-item";
-
-    const header = document.createElement("div");
-    header.className = "record-header";
-    header.innerHTML = `<span>${registro.conta}</span><span>${formatBRL(registro.valor)}</span>`;
-
-    const select = document.createElement("select");
-    select.dataset.id = registro.id;
-    select.innerHTML = `
-      <option value="">Selecione a categoria na DRE</option>
-      ${state.dadosBase.categoriasDre.map((categoria) => `<option value="${categoria}">${categoria}</option>`).join("")}
-    `;
-    select.addEventListener("change", (event) => {
-      state.selecoes[registro.id] = event.target.value;
-      renderSummary();
-    });
-
-    card.append(header, select);
-    recordsList.appendChild(card);
+    const card = createRecordCard(registro);
+    recordsBank.appendChild(card);
   });
 
   renderSummary();
@@ -205,6 +261,7 @@ function registerAttempt(ok, esperado, informado) {
   const attempt = {
     dataHora: new Date().toISOString(),
     aluno: state.aluno,
+    dificuldade: state.dificuldade,
     exercicioId: state.exercicioAtual.id,
     exercicioTitulo: state.exercicioAtual.titulo,
     classificacoes: state.selecoes,
@@ -287,4 +344,103 @@ function shuffleArray(list) {
     [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
+}
+
+function renderDreTemplate() {
+  dreBoard.innerHTML = "";
+  state.dadosBase.categoriasDre.forEach((categoria) => {
+    const section = document.createElement("section");
+    section.className = "dre-section";
+    section.innerHTML = `<h5>${categoria}</h5>`;
+
+    const dropZone = document.createElement("div");
+    dropZone.className = "drop-zone";
+    dropZone.dataset.category = categoria;
+    dropZone.addEventListener("dragover", onDragOverZone);
+    dropZone.addEventListener("dragleave", onDragLeaveZone);
+    dropZone.addEventListener("drop", onDropRecord);
+
+    section.appendChild(dropZone);
+    dreBoard.appendChild(section);
+  });
+}
+
+function createRecordCard(registro) {
+  const card = document.createElement("article");
+  card.className = "record-item";
+  card.draggable = true;
+  card.dataset.id = registro.id;
+  card.innerHTML = `
+    <div class="record-header">
+      <span>${registro.conta}</span>
+      <span>${formatBRL(registro.valor)}</span>
+    </div>
+  `;
+  card.addEventListener("dragstart", onDragStartRecord);
+  return card;
+}
+
+function onDragStartRecord(event) {
+  const id = event.currentTarget.dataset.id;
+  event.dataTransfer.setData("text/plain", id);
+}
+
+function onDragOverZone(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add("drag-over");
+}
+
+function onDragLeaveZone(event) {
+  event.currentTarget.classList.remove("drag-over");
+}
+
+function onDropRecord(event) {
+  event.preventDefault();
+  const zone = event.currentTarget;
+  zone.classList.remove("drag-over");
+
+  const recordId = event.dataTransfer.getData("text/plain");
+  if (!recordId) {
+    return;
+  }
+
+  const card = document.querySelector(`.record-item[data-id="${recordId}"]`);
+  if (!card) {
+    return;
+  }
+
+  zone.appendChild(card);
+
+  const categoria = zone.dataset.category || "";
+  if (categoria) {
+    state.selecoes[recordId] = categoria;
+  } else {
+    delete state.selecoes[recordId];
+  }
+
+  renderSummary();
+}
+
+async function loadBaseData() {
+  try {
+    const response = await fetch("./dados/registros-base.json");
+    if (!response.ok) {
+      throw new Error("Resposta invalida no carregamento");
+    }
+    const data = await response.json();
+    if (!Array.isArray(data?.exercicios) || !Array.isArray(data?.categoriasDre)) {
+      throw new Error("Formato de dados invalido");
+    }
+    return data;
+  } catch (error) {
+    resultMessage.textContent = "JSON externo bloqueado no navegador. Usando base interna do app.";
+    resultMessage.className = "result-message result-error";
+    return structuredClone(FALLBACK_BASE_DATA);
+  }
+}
+
+function formatDifficultyLabel(level) {
+  if (level === "easy") return "Easy";
+  if (level === "hard") return "Hard";
+  return "Normal";
 }
