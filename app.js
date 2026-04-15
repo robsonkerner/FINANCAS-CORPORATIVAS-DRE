@@ -1,4 +1,7 @@
 const STORAGE_KEY = "dre_tentativas";
+const SUPABASE_URL = "https://lgwadxioyaslsmvdeuuu.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_8i50Su8RY7J0xD-4HLep9Q_Zw0nnS6F";
+const SUPABASE_TABLE = "tentativas";
 const FALLBACK_BASE_DATA = {
   categoriasDre: [
     "Receita Bruta",
@@ -112,6 +115,7 @@ async function init() {
   renderAttempts();
   renderActivityLog();
   state.dadosBase = await loadBaseData();
+  await syncAttemptsFromSupabase();
 }
 
 function onEnter() {
@@ -203,7 +207,7 @@ function renderSummary() {
     .join("");
 }
 
-function onSubmit() {
+async function onSubmit() {
   if (!state.exercicioAtual) {
     return;
   }
@@ -236,7 +240,7 @@ function onSubmit() {
     : "Erro na DRE. Nesta rodada nao e possivel submeter de novo. Clique em Gerar nova lista para uma nova tentativa.";
   resultMessage.className = `result-message ${ok ? "result-correct" : "result-error"}`;
 
-  registerAttempt(ok, expected, selected);
+  await registerAttempt(ok, expected, selected);
   lockRoundAfterSubmit();
 }
 
@@ -288,7 +292,7 @@ function emptyTotals() {
   };
 }
 
-function registerAttempt(ok, esperado, informado) {
+async function registerAttempt(ok, esperado, informado) {
   const dataResposta = new Date().toISOString();
   const attempt = {
     idTentativa: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -309,6 +313,11 @@ function registerAttempt(ok, esperado, informado) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tentativas, null, 2));
   renderAttempts();
   renderActivityLog();
+
+  const remoteSaved = await saveAttemptToSupabase(attempt);
+  if (remoteSaved) {
+    await syncAttemptsFromSupabase();
+  }
 }
 
 function loadAttempts() {
@@ -619,6 +628,107 @@ function formatDateTime(iso) {
   } catch (error) {
     return iso;
   }
+}
+
+async function syncAttemptsFromSupabase() {
+  const remoteAttempts = await fetchAttemptsFromSupabase();
+  if (!remoteAttempts) {
+    return;
+  }
+
+  const merged = mergeAttempts(state.tentativas, remoteAttempts);
+  state.tentativas = merged;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged, null, 2));
+  renderAttempts();
+  renderActivityLog();
+}
+
+async function fetchAttemptsFromSupabase() {
+  const url = `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?select=*&order=data_resposta.desc&limit=200`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+      }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data)) {
+      return null;
+    }
+
+    return data.map(mapSupabaseRowToAttempt);
+  } catch (error) {
+    return null;
+  }
+}
+
+async function saveAttemptToSupabase(attempt) {
+  const payload = {
+    id_tentativa: attempt.idTentativa,
+    aluno: attempt.aluno,
+    dificuldade: attempt.dificuldade,
+    exercicio_id: attempt.exercicioId,
+    exercicio_titulo: attempt.exercicioTitulo,
+    inicio_jogo: attempt.inicioJogo,
+    data_resposta: attempt.dataResposta,
+    correto: attempt.correto,
+    classificacoes: attempt.classificacoes,
+    totais_esperados: attempt.totaisEsperados,
+    totais_informados: attempt.totaisInformados
+  };
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        Prefer: "resolution=merge-duplicates"
+      },
+      body: JSON.stringify(payload)
+    });
+    return response.ok;
+  } catch (error) {
+    return false;
+  }
+}
+
+function mapSupabaseRowToAttempt(row) {
+  return {
+    idTentativa: row.id_tentativa || row.id || `${row.aluno || "aluno"}-${row.data_resposta || row.created_at || Date.now()}`,
+    dataHora: row.data_resposta || row.created_at || null,
+    dataResposta: row.data_resposta || row.created_at || null,
+    inicioJogo: row.inicio_jogo || null,
+    aluno: row.aluno || "-",
+    dificuldade: row.dificuldade || "normal",
+    exercicioId: row.exercicio_id || "",
+    exercicioTitulo: row.exercicio_titulo || "",
+    classificacoes: row.classificacoes || {},
+    totaisEsperados: row.totais_esperados || emptyTotals(),
+    totaisInformados: row.totais_informados || emptyTotals(),
+    correto: Boolean(row.correto)
+  };
+}
+
+function mergeAttempts(localAttempts, remoteAttempts) {
+  const mergedMap = new Map();
+  [...localAttempts, ...remoteAttempts].forEach((attempt) => {
+    const key = attempt.idTentativa || `${attempt.aluno}-${attempt.dataResposta || attempt.dataHora}`;
+    mergedMap.set(key, attempt);
+  });
+
+  return [...mergedMap.values()].sort((a, b) => {
+    const dateA = new Date(a.dataResposta || a.dataHora || 0).getTime();
+    const dateB = new Date(b.dataResposta || b.dataHora || 0).getTime();
+    return dateA - dateB;
+  });
 }
 
 function buildReviewDreHtml(exercicio, attempt, modo) {
