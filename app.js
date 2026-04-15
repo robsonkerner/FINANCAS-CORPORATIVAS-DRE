@@ -584,39 +584,15 @@ function openAttemptReview(attempt) {
     return;
   }
 
-  const registros = exercicio.registros || [];
-  const alunoItens = [];
-  const corretoItens = [];
-
-  registros.forEach((registro) => {
-    const alunoCategoria = attempt.classificacoes?.[registro.id] || "(nao classificado)";
-    const corretaCategoria = registro.categoriaCorreta;
-    const ok = alunoCategoria === corretaCategoria;
-
-    alunoItens.push(`
-      <div class="review-item ${ok ? "ok" : "fail"}">
-        <div class="account">${escapeHtml(registro.conta)}</div>
-        <div class="category">Aluno: ${escapeHtml(alunoCategoria)}</div>
-      </div>
-    `);
-
-    corretoItens.push(`
-      <div class="review-item ${ok ? "ok" : "fail"}">
-        <div class="account">${escapeHtml(registro.conta)}</div>
-        <div class="category">Correto: ${escapeHtml(corretaCategoria)}</div>
-      </div>
-    `);
-  });
-
   reviewMetaEl.textContent = `${attempt.aluno || "-"} | ${formatDifficultyLabel(attempt.dificuldade || "normal")} | ${attempt.correto ? "Acertou" : "Errou"} | Respondido em ${formatDateTime(attempt.dataResposta || attempt.dataHora)}`;
   reviewColumnsEl.innerHTML = `
     <div class="review-column">
-      <h4>Resposta do aluno</h4>
-      ${alunoItens.join("")}
+      <h4>Resposta do aluno (DRE)</h4>
+      ${buildReviewDreHtml(exercicio, attempt, "aluno")}
     </div>
     <div class="review-column">
-      <h4>Gabarito correto</h4>
-      ${corretoItens.join("")}
+      <h4>Gabarito correto (DRE)</h4>
+      ${buildReviewDreHtml(exercicio, attempt, "correto")}
     </div>
   `;
 
@@ -643,4 +619,137 @@ function formatDateTime(iso) {
   } catch (error) {
     return iso;
   }
+}
+
+function buildReviewDreHtml(exercicio, attempt, modo) {
+  const registros = exercicio.registros || [];
+  const categorias = state.dadosBase?.categoriasDre || [];
+  const classificacoesAluno = attempt.classificacoes || {};
+  const classificacoes =
+    modo === "correto"
+      ? Object.fromEntries(registros.map((r) => [r.id, r.categoriaCorreta]))
+      : classificacoesAluno;
+
+  const grupos = {};
+  categorias.forEach((categoria) => {
+    grupos[categoria] = [];
+  });
+  grupos["Nao classificado"] = [];
+
+  registros.forEach((registro) => {
+    const categoriaSelecionada = classificacoes[registro.id] || "Nao classificado";
+    const alvo = grupos[categoriaSelecionada] ? categoriaSelecionada : "Nao classificado";
+    const ok = (classificacoesAluno[registro.id] || "") === registro.categoriaCorreta;
+    grupos[alvo].push({ ...registro, ok });
+  });
+
+  const totais =
+    modo === "correto"
+      ? calculateExpectedTotals(registros)
+      : calculateTotalsFromMap(registros, classificacoesAluno);
+  const demonstrativo = buildDreSummaryRows(totais);
+
+  const secoes = categorias
+    .map((categoria) => {
+      const itens = grupos[categoria]
+        .map(
+          (item) => `
+          <div class="dre-launch-item ${item.ok ? "ok" : "fail"}">
+            <span>${escapeHtml(item.conta)}</span>
+            <span>${formatBRL(item.valor)}</span>
+          </div>
+        `
+        )
+        .join("");
+
+      return `
+        <div class="dre-group">
+          <div class="dre-group-title">${escapeHtml(categoria)}</div>
+          ${itens || '<div class="dre-launch-empty">Sem lancamentos nesta secao.</div>'}
+        </div>
+      `;
+    })
+    .join("");
+
+  const naoClassificados = grupos["Nao classificado"] || [];
+  const naoClassificadosHtml =
+    modo === "aluno"
+      ? `
+      <div class="dre-group">
+        <div class="dre-group-title">Nao classificado</div>
+        ${
+          naoClassificados.length
+            ? naoClassificados
+                .map(
+                  (item) => `
+              <div class="dre-launch-item fail">
+                <span>${escapeHtml(item.conta)}</span>
+                <span>${formatBRL(item.valor)}</span>
+              </div>
+            `
+                )
+                .join("")
+            : '<div class="dre-launch-empty">Nenhum item pendente.</div>'
+        }
+      </div>`
+      : "";
+
+  const linhasDre = demonstrativo
+    .map(
+      ([rotulo, valor, tipo]) => `
+      <div class="dre-line ${tipo}">
+        <span>${escapeHtml(rotulo)}</span>
+        <span>${formatBRL(valor)}</span>
+      </div>
+    `
+    )
+    .join("");
+
+  return `
+    <div class="dre-preview">
+      ${secoes}
+      ${naoClassificadosHtml}
+      <div class="dre-summary-block">
+        ${linhasDre}
+      </div>
+    </div>
+  `;
+}
+
+function calculateTotalsFromMap(registros, classificacoesMap) {
+  const totals = emptyTotals();
+  registros.forEach((registro) => {
+    const categoria = classificacoesMap?.[registro.id];
+    if (!categoria || totals[categoria] === undefined) {
+      return;
+    }
+    if (categoria === "Resultado Financeiro") {
+      const signal = /despesa|juros/i.test(registro.conta) ? -1 : 1;
+      totals[categoria] += registro.valor * signal;
+      return;
+    }
+    totals[categoria] += registro.valor;
+  });
+  return totals;
+}
+
+function buildDreSummaryRows(totals) {
+  const receitaLiquida = totals["Receita Bruta"] - totals.Deducoes;
+  const lucroBruto = receitaLiquida - totals.CMV;
+  const lucroOperacional = lucroBruto - totals["Despesas Operacionais"];
+  const resultadoAntesImpostos = lucroOperacional + totals["Resultado Financeiro"];
+  const lucroLiquido = resultadoAntesImpostos - totals["Impostos sobre Lucro"];
+
+  return [
+    ["Receita Bruta", totals["Receita Bruta"], "normal"],
+    ["(-) Deducoes", totals.Deducoes, "deduction"],
+    ["= Receita Liquida", receitaLiquida, "total"],
+    ["(-) CMV", totals.CMV, "deduction"],
+    ["= Lucro Bruto", lucroBruto, "total"],
+    ["(-) Despesas Operacionais", totals["Despesas Operacionais"], "deduction"],
+    ["(+/-) Resultado Financeiro", totals["Resultado Financeiro"], "normal"],
+    ["= Resultado Antes dos Impostos", resultadoAntesImpostos, "total"],
+    ["(-) Impostos sobre Lucro", totals["Impostos sobre Lucro"], "deduction"],
+    ["= Lucro Liquido", lucroLiquido, "total"]
+  ];
 }

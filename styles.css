@@ -206,6 +206,79 @@ button:disabled {
   color: #4f5d6c;
 }
 
+.dre-preview {
+  display: grid;
+  gap: 8px;
+}
+
+.dre-group {
+  border: 1px solid #e4eaf2;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dre-group-title {
+  background: #f2f6fb;
+  color: #113b63;
+  font-weight: bold;
+  padding: 7px 8px;
+  font-size: 13px;
+}
+
+.dre-launch-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border-top: 1px solid #eef3f8;
+  font-size: 13px;
+}
+
+.dre-launch-item.ok {
+  background: #f3fcf7;
+  color: #0f8a40;
+}
+
+.dre-launch-item.fail {
+  background: #fff5f2;
+  color: #c83a22;
+}
+
+.dre-launch-empty {
+  padding: 7px 8px;
+  font-size: 12px;
+  color: #6b7786;
+}
+
+.dre-summary-block {
+  border: 1px solid #dbe4ee;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dre-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border-top: 1px solid #eef3f8;
+  font-size: 13px;
+  background: #fff;
+}
+
+.dre-line:first-child {
+  border-top: none;
+}
+
+.dre-line.deduction {
+  color: #8a4c00;
+}
+
+.dre-line.total {
+  font-weight: bold;
+  background: #f4f8fd;
+}
+
 .record-locked {
   opacity: 0.85;
   cursor: default;
