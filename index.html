@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de DRE - ADM/Contábeis</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>Simulador de DRE</h1>
+    <p>Organize os registros contábeis na estrutura correta da DRE.</p>
+  </header>
+
+  <main class="container">
+    <section id="login-card" class="card">
+      <h2>Entrada do Aluno</h2>
+      <label for="student-name">Nome do aluno</label>
+      <input id="student-name" type="text" placeholder="Digite seu nome completo">
+      <button id="enter-btn">Entrar</button>
+      <p id="login-error" class="error-message hidden">Informe seu nome para continuar.</p>
+    </section>
+
+    <section id="exercise-card" class="card hidden">
+      <div class="top-bar">
+        <div>
+          <h2>Exercício de DRE</h2>
+          <p id="student-label"></p>
+        </div>
+        <button id="new-exercise-btn" class="secondary">Gerar nova lista</button>
+      </div>
+
+      <div id="records-list" class="records-list"></div>
+
+      <h3>Resumo calculado</h3>
+      <div id="summary" class="summary-grid"></div>
+
+      <div class="actions">
+        <button id="submit-btn">Submeter resposta</button>
+        <button id="show-attempts-btn" class="secondary">Ver tentativas</button>
+      </div>
+
+      <p id="result-message" class="result-message"></p>
+    </section>
+
+    <section id="attempts-card" class="card hidden">
+      <div class="top-bar">
+        <h2>Histórico de tentativas</h2>
+        <div class="actions-inline">
+          <button id="export-btn" class="secondary">Exportar JSON</button>
+          <label for="import-file" class="import-label">Importar JSON</label>
+          <input id="import-file" type="file" accept=".json">
+        </div>
+      </div>
+      <p class="small-text">Os registros ficam salvos no navegador e podem ser exportados/importados em arquivo JSON editável.</p>
+      <pre id="attempts-output" class="attempts-output"></pre>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

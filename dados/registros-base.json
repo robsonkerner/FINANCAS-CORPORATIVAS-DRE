@@ -1,0 +1,42 @@
+{
+  "categoriasDre": [
+    "Receita Bruta",
+    "Deducoes",
+    "CMV",
+    "Despesas Operacionais",
+    "Resultado Financeiro",
+    "Impostos sobre Lucro"
+  ],
+  "exercicios": [
+    {
+      "id": "dre-001",
+      "titulo": "Comercio Varejista",
+      "registros": [
+        { "id": "r1", "conta": "Venda de Mercadorias", "valor": 120000, "categoriaCorreta": "Receita Bruta" },
+        { "id": "r2", "conta": "Devolucoes de Vendas", "valor": 5000, "categoriaCorreta": "Deducoes" },
+        { "id": "r3", "conta": "Impostos sobre Vendas", "valor": 9000, "categoriaCorreta": "Deducoes" },
+        { "id": "r4", "conta": "Custo das Mercadorias Vendidas", "valor": 45000, "categoriaCorreta": "CMV" },
+        { "id": "r5", "conta": "Despesas com Salarios Administrativos", "valor": 14000, "categoriaCorreta": "Despesas Operacionais" },
+        { "id": "r6", "conta": "Despesas com Aluguel", "valor": 6000, "categoriaCorreta": "Despesas Operacionais" },
+        { "id": "r7", "conta": "Receita Financeira", "valor": 2000, "categoriaCorreta": "Resultado Financeiro" },
+        { "id": "r8", "conta": "Despesa Financeira", "valor": 3000, "categoriaCorreta": "Resultado Financeiro" },
+        { "id": "r9", "conta": "IRPJ e CSLL", "valor": 9500, "categoriaCorreta": "Impostos sobre Lucro" }
+      ]
+    },
+    {
+      "id": "dre-002",
+      "titulo": "Industria Alimenticia",
+      "registros": [
+        { "id": "r10", "conta": "Receita de Vendas", "valor": 180000, "categoriaCorreta": "Receita Bruta" },
+        { "id": "r11", "conta": "Abatimentos e Devolucoes", "valor": 8000, "categoriaCorreta": "Deducoes" },
+        { "id": "r12", "conta": "Tributos sobre Vendas", "valor": 15000, "categoriaCorreta": "Deducoes" },
+        { "id": "r13", "conta": "Custo de Producao", "valor": 72000, "categoriaCorreta": "CMV" },
+        { "id": "r14", "conta": "Despesa Comercial", "valor": 12000, "categoriaCorreta": "Despesas Operacionais" },
+        { "id": "r15", "conta": "Despesa Geral e Administrativa", "valor": 17000, "categoriaCorreta": "Despesas Operacionais" },
+        { "id": "r16", "conta": "Receita de Aplicacao Financeira", "valor": 3500, "categoriaCorreta": "Resultado Financeiro" },
+        { "id": "r17", "conta": "Juros sobre Emprestimos", "valor": 4500, "categoriaCorreta": "Resultado Financeiro" },
+        { "id": "r18", "conta": "Imposto de Renda e Contribuicao Social", "valor": 14500, "categoriaCorreta": "Impostos sobre Lucro" }
+      ]
+    }
+  ]
+}
